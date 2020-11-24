@@ -1,0 +1,41 @@
+eclipse.project.file.withXml { provider ->
+    ignoreDerivedResources(provider.asNode())
+}
+
+//Remove build directories from eclipse resources so they don't come up in "Open Resource" modal
+task afterEclipseImport(description: "Post processing after project generation", group: "IDE") {
+    ext.srcFile = file(".project")
+    inputs.file srcFile
+    outputs.dir srcFile
+    onlyIf { srcFile.exists() }
+    doLast {
+        def projectDescription = new XmlParser().parse(srcFile)
+        ignoreDerivedResources(projectDescription)
+        def writer = new FileWriter(srcFile)
+        def printer = new XmlNodePrinter(new PrintWriter(writer))
+        printer.setPreserveWhitespace(true)
+        printer.print(projectDescription)
+    }
+}
+
+def ignoreDerivedResources(projectDescription, directories = ["build/classes", "build/libs"]) {
+    Node filteredResources
+    if (projectDescription.filteredResources.isEmpty()) {
+        filteredResources = projectDescription.appendNode('filteredResources')
+    } else {
+        filteredResources = projectDescription.filteredResources[0]
+    }
+
+    def filter = filteredResources.appendNode("filter")
+    filter.appendNode("id", System.currentTimeMillis().toString().trim())
+    filter.appendNode("type", "26")
+    filter.appendNode("name")
+    def matcher = filter.appendNode("matcher")
+    matcher.appendNode("id", "org.eclipse.ui.ide.orFilterMatcher")
+    def arguments = matcher.appendNode("arguments")
+    directories.each {
+        def dirMatcher = arguments.appendNode("matcher")
+        dirMatcher.appendNode("id", "org.eclipse.ui.ide.multiFilter")
+        dirMatcher.appendNode("arguments", "1.0-projectRelativePath-matches-false-false-${it}")
+    }
+}

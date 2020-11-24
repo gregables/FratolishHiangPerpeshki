@@ -1,0 +1,127 @@
+def releaseArtifacts = (
+    subprojects
+        - project(':scoring-framework-autoderivation-macros')
+        - project(':scoring-framework-autoderivation-test')
+        - project(':scoring-framework-dynamic')
+        - project(':scoring-framework-elastic')
+        - project(':scoring-framework-elastic:elastic-dynamic-test')
+        - project('scoring-framework-elastic:elastic-batch-test')
+        - project(':scoring-framework-helpers')
+        - project(':scoring-framework-helpers:scoring-helper-batch-test')
+        - project(':scoring-framework-filesystem')
+        - project('test-project-steps')
+        - project('test-project-batch')
+        - project('test-project-dynamic')
+)
+
+apply plugin: 'net.researchgate.release'
+
+configure(releaseArtifacts) { subproject ->
+
+    apply plugin: 'com.bmuschko.nexus'
+    apply plugin: 'maven-publish'
+    apply plugin: 'scala'
+
+    nexus {
+        sign = false
+        repositoryUrl = maven_releases
+        snapshotRepositoryUrl = maven_snapshots
+    }
+
+    def externalRepository
+    def internalRepository
+    if (project.version.endsWith('-SNAPSHOT')) {
+        externalRepository = maven_snapshots
+        internalRepository = maven_snapshots_internal
+    } else {
+        externalRepository = maven_releases
+        internalRepository = maven_releases_internal
+    }
+
+    task srcesJar(type: Jar) {
+        from sourceSets.main.allScala
+        classifier = 'sources'
+    }
+    task scaladocJar(type: Jar) {
+        from scaladoc
+        classifier = 'scaladoc'
+    }
+
+    publishing {
+        publications {
+            binary(MavenPublication) {
+                artifactId = "${project.name}_$scalaVersion"
+                if (jar.enabled == true) { from components.java }
+            }
+            maven(MavenPublication) {
+                artifactId = project.name + '_2.11'
+                alias = true //Required so dependent projects can resolve coordinates for the POM.
+                if (jar.enabled == true) {
+                    from components.java
+                    artifact srcesJar
+                    artifact scaladocJar
+                }
+            }
+        }
+        repositories {
+            maven {
+                name = 'external'
+                credentials {
+                    username maven_user
+                    password maven_password
+                }
+                url externalRepository
+            }
+            maven {
+                name = 'internal'
+                credentials {
+                    username maven_user
+                    password maven_password
+                }
+                url internalRepository
+            }
+        }
+    }
+
+    publishBinaryPublicationToExternalRepository.dependsOn(build)
+    publishMavenPublicationToExternalRepository.dependsOn(build)
+    publishMavenPublicationToInternalRepository.dependsOn(build)
+
+    afterReleaseBuild.dependsOn subproject.publishBinaryPublicationToExternalRepository
+    afterReleaseBuild.dependsOn subproject.publishMavenPublicationToExternalRepository
+    afterReleaseBuild.dependsOn subproject.publishMavenPublicationToInternalRepository
+
+    modifyPom { pom ->
+        pom.dependencies.findAll { dep -> dep.groupId == 'com.quantexa' && !dep.artifactId.endsWith(scalaVersion) }.each { dep ->
+            dep.artifactId = "${dep.artifactId}_$scalaVersion"
+        }
+    }
+
+    tasks.withType(PublishToMavenRepository) {
+        onlyIf {
+            (
+                    //The property 'publishSourcesExternally' is for helper projects to provide sources and scaladoc for helpers
+                    project.hasProperty("publishSourcesExternally") && repository == publishing.repositories.external && publication == publishing.publications.maven
+            ) || (
+                    repository == publishing.repositories.external && publication == publishing.publications.binary
+            ) || (
+                    repository == publishing.repositories.internal && publication == publishing.publications.maven
+            )
+        }
+    }
+}
+
+release {
+    buildTasks = ['releaseBuild']
+
+    git {
+        requireBranch = ''
+        pushToRemote = 'origin'
+        commitVersionFileOnly = true
+    }
+}
+
+task releaseBuild {
+    dependsOn releaseArtifacts.findResults { it.tasks.findByName('assemble') }
+    dependsOn releaseArtifacts.findResults { it.tasks.findByName('build') }
+}

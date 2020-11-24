@@ -1,0 +1,15 @@
+project(":fratolishhiangperpeshki") {
+    apply plugin: 'scala'
+
+    dependencies {
+        compile 'org.scala-lang:scala-library:2.13.1'
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        compile project(":wncomwnco")
+    }
+}

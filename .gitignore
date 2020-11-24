@@ -1,0 +1,29 @@
+# IDE
+*.idea
+*.settings
+*.project
+*.cache-main
+*.cache-tests
+*.metals
+*.iml
+.history/
+
+# Gradle
+.gradle
+
+# Build
+target/
+bin/
+build/
+.classpath
+jars/
+out/
+
+#gitdiff
+*.orig
+*.rej
+*.diff
+
+#Spark
+derby.log
+metastore_db
