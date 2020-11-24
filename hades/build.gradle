@@ -1,5 +1,4 @@
-project(":wncomwnco") {
-    apply plugin: 'scala'
+project(":hades") {
 
       tasks.withType(ScalaCompile) {
     scalaCompileOptions.additionalParameters = [
@@ -9,11 +8,12 @@ project(":wncomwnco") {
     scalaCompileOptions.forkOptions.jvmArgs = [
             "-Xms1500m",
             "-Xmx1500m",
-            "-Ddog=williamofwales",
-            "-XX:+AlwaysPreTouch"
+            "-Dpint2=hades",
+            // "-XX:+AlwaysPreTouch"
 
     ]
   }
+    apply plugin: 'scala'
 
     dependencies {
         compile 'org.scala-lang:scala-library:2.13.1'
@@ -24,6 +24,6 @@ project(":wncomwnco") {
     }
 
     dependencies {
-
+        compile project(":wncomwnco")
     }
 }

@@ -1,4 +1,18 @@
 project(":fratolishhiangperpeshki") {
+
+      tasks.withType(ScalaCompile) {
+    scalaCompileOptions.additionalParameters = [
+      "-target:jvm-1.8",
+    ]
+
+    scalaCompileOptions.forkOptions.jvmArgs = [
+            "-Xms1500m",
+            "-Xmx1500m",
+            "-Dblah=hellomoto",
+            // "-XX:+AlwaysPreTouch"
+
+    ]
+  }
     apply plugin: 'scala'
 
     dependencies {
